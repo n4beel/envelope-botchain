@@ -1,12 +1,30 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Fraunces, Nunito_Sans, Red_Hat_Mono } from "next/font/google";
 import { EvmProvider } from "@/components/providers/EvmProvider";
 import { ToastProvider } from "@/components/ui/Toast";
 import { app } from "@/lib/app-config";
 import "./globals.css";
 
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"], display: "swap" });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"], display: "swap" });
+const fraunces = Fraunces({
+  variable: "--font-serif",
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "600", "700", "900"],
+});
+
+const nunitoSans = Nunito_Sans({
+  variable: "--font-sans",
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
+});
+
+const redHatMono = Red_Hat_Mono({
+  variable: "--font-mono",
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
+});
 
 export const metadata: Metadata = {
   title: `${app.name} — ${app.tagline}`,
@@ -14,23 +32,20 @@ export const metadata: Metadata = {
   openGraph: { title: app.name, description: app.tagline, type: "website", url: app.url },
 };
 
-/** `width=device-width` plus a floor on zoom. Pinch-zoom stays available; nothing is locked out. */
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#0A0A0A",
+  themeColor: "#C9A872",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full`}
-      // The project's accent, written once at the root. Every component reads `var(--accent)`, so
-      // this is the only place a palette change has to happen.
+      className={`${fraunces.variable} ${nunitoSans.variable} ${redHatMono.variable} h-full`}
       style={{ ["--accent" as string]: app.accent }}
     >
-      <body className="min-h-full antialiased">
+      <body className="min-h-full antialiased font-sans selection:bg-[#7A1523]/20 selection:text-[#7A1523]">
         <EvmProvider>
           <ToastProvider>{children}</ToastProvider>
         </EvmProvider>

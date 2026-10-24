@@ -5,36 +5,41 @@
 @source "../lib/**/*.{ts,tsx}";
 
 @theme {
-  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-serif: var(--font-serif), "Fraunces", Georgia, serif;
+  --font-sans: var(--font-sans), "Nunito Sans", system-ui, sans-serif;
+  --font-mono: var(--font-mono), "Red Hat Mono", ui-monospace, monospace;
 
-  --radius: 2px;
-  --radius-sm: 2px;
-  --radius-md: 4px;
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
 }
 
 /**
- * Design tokens.
- *
- * Every component reads these through `var(--token)` rather than a Tailwind colour class, which is
- * what lets a project change its whole palette from `lib/app-config.ts`: the root layout writes
- * `--accent` inline, overriding the default below. Nothing else needs editing per project.
+ * Archetype M · Object Design Tokens.
+ * Dominant cream paper envelope on textured kraft ground with rich wax seal red.
  */
 :root {
-  --bg-base: #0A0A0A;
-  --bg-surface: #111111;
-  --bg-elevated: #181818;
-  --bg-overlay: #1F1F1F;
-  --border-subtle: #1E1E1E;
-  --border-default: #2A2A2A;
-  --border-strong: #383838;
-  --text-primary: #EBEBEB;
-  --text-secondary: #888888;
-  --text-tertiary: #555555;
-  --accent: #00E5CC;
-  --success: #1DB954;
-  --warning: #F5A623;
-  --danger: #E53E3E;
+  --bg-base: #C9A872;
+  --bg-surface: #F6EFE0;
+  --bg-elevated: #FAF5EB;
+  --bg-overlay: rgba(42, 29, 14, 0.45);
+
+  --border-subtle: #A88B55;
+  --border-default: #8F723D;
+  --border-strong: #5C4521;
+
+  --text-primary: #2A1D0E;
+  --text-muted: #4A3A1F;
+  --text-tertiary: #6E5B37;
+
+  --accent: #7A1523;
+  --accent-ink: #FBF3E4;
+  --seal-shadow: #5C0F1B;
+
+  --success: #2C6B38;
+  --warning: #A85A12;
+  --danger: #962121;
 }
 
 @layer base {
@@ -46,10 +51,14 @@
 
   html {
     height: 100%;
+    background-color: var(--bg-base);
   }
 
   body {
-    background: var(--bg-base);
+    background-color: var(--bg-base);
+    background-image: radial-gradient(#B8965F 1px, transparent 1px), radial-gradient(#B8965F 1px, var(--bg-base) 1px);
+    background-size: 40px 40px;
+    background-position: 0 0, 20px 20px;
     color: var(--text-primary);
     font-family: var(--font-sans);
     min-height: 100%;
@@ -59,23 +68,15 @@
 
   a {
     color: inherit;
+    text-decoration: none;
   }
 }
 
-/* Touch targets
- *
- * The interface is deliberately dense, and at 26px tall a `size="sm"` button is comfortable with a
- * mouse and a coin-flip with a thumb. `pointer: coarse` matches touch input rather than screen
- * width, so this raises the hit area exactly where it is needed and leaves mouse density
- * untouched, including on a small laptop window.
- *
- * 44px is Apple's minimum; Android asks for 48dp. Padding rather than height, so a control that is
- * already large enough is not stretched.
- */
+/* Touch targets */
 @media (pointer: coarse) {
   button,
   [role="button"],
-  a.nav-link,
+  a.hanging-tag,
   select,
   label[for] {
     min-height: 44px;
@@ -83,65 +84,62 @@
 
   input,
   textarea {
-    /* Anything under 16px makes iOS Safari zoom the page on focus, and it does not zoom back. */
     font-size: 16px;
   }
 }
 
-/* Nothing should be able to scroll the page sideways. A single overflowing address or hash
- * otherwise shifts the whole layout and there is no obvious culprit. */
 html,
 body {
   overflow-x: hidden;
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
   color: var(--accent);
 }
 
-::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-::-webkit-scrollbar-track {
-  background: var(--bg-base);
-}
-::-webkit-scrollbar-thumb {
-  background: var(--border-strong);
-  border-radius: 2px;
+.serif {
+  font-family: var(--font-serif);
 }
 
 .mono {
   font-family: var(--font-mono);
-  letter-spacing: 0;
 }
 
-/* Toast entry. Radix drives the data-state; without the keyframes the toast simply appears. */
-@keyframes slideIn {
-  from { transform: translateX(8px); opacity: 0; }
-  to   { transform: translateX(0);   opacity: 1; }
-}
-@keyframes swipeOut {
-  to { transform: translateX(100%); opacity: 0; }
+/* Envelope physical motion transitions */
+.envelope-flap {
+  transform-origin: top center;
+  transition: transform 450ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-@keyframes shimmer {
-  0%   { background-position: -400px 0; }
-  100% { background-position: 400px 0; }
-}
-.skeleton {
-  background: linear-gradient(
-    90deg,
-    var(--bg-surface) 25%,
-    var(--bg-elevated) 50%,
-    var(--bg-surface) 75%
-  );
-  background-size: 800px 100%;
-  animation: shimmer 1.6s ease-in-out infinite;
-  border-radius: 2px;
+.envelope-flap.open {
+  transform: rotateX(180deg);
 }
 
+.envelope-letter {
+  transition: transform 500ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 400ms ease;
+}
+
+.envelope-letter.extracted {
+  transform: translateY(-80px);
+}
+
+.seal-press {
+  box-shadow: 0 6px 16px var(--seal-shadow), inset 0 2px 4px rgba(255, 255, 255, 0.25);
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.seal-press:hover {
+  transform: scale(1.03);
+  box-shadow: 0 8px 20px var(--seal-shadow), inset 0 2px 5px rgba(255, 255, 255, 0.35);
+}
+
+.seal-press:active {
+  transform: scale(0.97);
+  box-shadow: 0 3px 8px var(--seal-shadow), inset 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* Reduced motion accessibility */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -149,5 +147,13 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .envelope-flap.open {
+    transform: rotateX(180deg);
+  }
+
+  .envelope-letter.extracted {
+    transform: translateY(-80px);
   }
 }

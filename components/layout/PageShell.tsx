@@ -7,171 +7,109 @@ import NetworkBadge from "@/components/botchain/NetworkBadge";
 import BuiltOnBotChain from "@/components/botchain/BuiltOnBotChain";
 import { app } from "@/lib/app-config";
 
-export type NavItem = { href: string; label: string };
-
-interface PageShellProps {
+export interface PageShellProps {
   children: React.ReactNode;
-  nav?: NavItem[];
   title?: string;
   description?: string;
 }
 
 /**
- * App frame.
+ * Archetype M · Object App Shell.
  *
- * A top bar rather than ghost-pay's 220px rail. These apps have two or three screens, and a rail
- * that wide spends a fifth of a laptop window — and all of a phone — on three links. The bar is
- * the same at every width, which also means there is no drawer, no focus trap and no hamburger to
- * get wrong.
+ * No generic top navbar and no card containers. The layout frames a single physical object:
+ * an envelope resting on a warm kraft dispatch table.
  *
- * Height is `100dvh` rather than `100vh`. On mobile Safari and Chrome, `100vh` is the viewport
- * with the browser chrome *retracted*, so a `h-screen` layout with `overflow-hidden` pushes its
- * own footer under the address bar and the user cannot scroll to it.
+ * Top-left: Small engraved wordmark.
+ * Top-right: Minimal wallet connect & network indicator.
+ * Hanging tag: Tied with twine for secondary navigation (My Envelopes / Seal New).
+ * Footer: Stamped postmark along the bottom edge.
  */
-export default function PageShell({ children, nav = [], title, description }: PageShellProps) {
+export default function PageShell({ children, title, description }: PageShellProps) {
+  const pathname = usePathname();
+  const isMine = pathname === "/mine";
+
   return (
-    <div
-      className="flex flex-col overflow-x-hidden"
-      style={{ minHeight: "100dvh", background: "var(--bg-base)" }}
-    >
-      <header
-        className="sticky top-0 z-30 flex-shrink-0"
-        style={{
-          borderBottom: "1px solid var(--border-subtle)",
-          background: "var(--bg-surface)",
-        }}
-      >
-        <div className="mx-auto w-full max-w-[880px] px-4 md:px-6">
-          <div className="flex items-center gap-3 py-2.5">
-            <Link href="/" className="flex items-center gap-2 flex-shrink-0 no-underline">
-              <span
-                className="w-2 h-2 flex-shrink-0"
-                style={{ background: "var(--accent)" }}
-                aria-hidden="true"
-              />
-              <span
-                className="text-[14px] font-semibold tracking-[-0.01em]"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {app.name}
-              </span>
-            </Link>
+    <div className="min-h-[100dvh] flex flex-col justify-between overflow-x-hidden relative text-[#2A1D0E]">
+      {/* Top utility row: Wordmark and Wallet Connect */}
+      <header className="w-full max-w-[820px] mx-auto px-4 sm:px-6 pt-4 pb-2 flex items-center justify-between z-20">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/"
+            className="flex items-center gap-2 group text-[#2A1D0E] font-serif font-black text-[18px] sm:text-[20px] tracking-tight hover:opacity-85 transition-opacity"
+          >
+            <span
+              className="w-3.5 h-3.5 rounded-full bg-[#7A1523] shadow-inner inline-block"
+              aria-hidden="true"
+            />
+            <span className="uppercase tracking-[0.06em]">{app.name}</span>
+          </Link>
+        </div>
 
-            <div className="flex-1" />
-            <NetworkBadge />
-            <div className="w-[150px] md:w-[180px] flex-shrink-0">
-              <ConnectButton />
-            </div>
+        <div className="flex items-center gap-2.5">
+          {/* Hanging luggage / postal tag */}
+          <Link
+            href={isMine ? "/" : "/mine"}
+            className="hanging-tag hidden sm:inline-flex items-center gap-1.5 px-3 py-1 bg-[#F6EFE0] border border-[#A88B55] shadow-sm rounded-sm text-[12px] font-serif font-bold text-[#2A1D0E] hover:bg-[#FAF5EB] hover:-translate-y-0.5 transition-all"
+            title={isMine ? "Seal a new envelope" : "View my envelopes"}
+          >
+            <span className="text-[#A88B55]" aria-hidden="true">🏷</span>
+            <span>{isMine ? "Seal Envelope" : "My Envelopes"}</span>
+          </Link>
+
+          <NetworkBadge />
+          <div className="w-[136px]">
+            <ConnectButton />
           </div>
-
-          {nav.length > 0 && <Nav items={nav} />}
         </div>
       </header>
 
-      <main className="flex-1 mx-auto w-full max-w-[880px] px-4 py-6 md:px-6 md:py-8">
+      {/* Hanging tag on mobile below header */}
+      <div className="sm:hidden px-4 flex justify-end z-20">
+        <Link
+          href={isMine ? "/" : "/mine"}
+          className="hanging-tag inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#F6EFE0] border border-[#A88B55] shadow-sm rounded-sm text-[11px] font-serif font-bold text-[#2A1D0E]"
+        >
+          <span className="text-[#A88B55]" aria-hidden="true">🏷</span>
+          <span>{isMine ? "Seal Envelope" : "My Envelopes"}</span>
+        </Link>
+      </div>
+
+      {/* Main Object Workspace */}
+      <main className="flex-1 w-full max-w-[620px] mx-auto px-4 py-4 sm:py-6 flex flex-col justify-center items-center z-10">
         {(title || description) && (
-          <div className="mb-6">
+          <div className="text-center mb-4 max-w-[500px]">
             {title && (
-              <h1
-                className="text-[20px] md:text-[24px] font-semibold tracking-[-0.015em]"
-                style={{ color: "var(--text-primary)" }}
-              >
+              <h1 className="text-[24px] sm:text-[28px] font-serif font-extrabold text-[#2A1D0E] tracking-tight leading-snug">
                 {title}
               </h1>
             )}
             {description && (
-              <p
-                className="mt-1.5 text-[13px] leading-relaxed"
-                style={{ color: "var(--text-secondary)" }}
-              >
+              <p className="mt-1 text-[13px] sm:text-[14px] text-[#4A3A1F] leading-relaxed">
                 {description}
               </p>
             )}
           </div>
         )}
-        {children}
+
+        <div className="w-full flex justify-center">{children}</div>
       </main>
 
-      {/*
-        The ecosystem footer is required, not decorative. BOT Chain's project assessment criteria
-        ask that the footer or an ecosystem-partnership section carry the BOT Chain name and link
-        to both botchain.ai and the explorer; a site without it is not counted, however complete
-        the product is. It lives in the shared shell so no project can ship missing it.
-      */}
-      <footer
-        className="flex-shrink-0 mx-auto w-full max-w-[880px] px-4 py-6 md:px-6"
-        style={{ borderTop: "1px solid var(--border-subtle)" }}
-      >
-        <div className="flex flex-col gap-3">
-          <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-            {app.tagline}
-          </p>
+      {/* Postmark cancellation stamp footer */}
+      <footer className="w-full max-w-[820px] mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-[#A88B55]/40 text-[#4A3A1F] text-[11px] font-mono z-10">
+        <div className="flex items-center gap-2">
+          <span className="inline-block w-4 h-4 rounded-full border border-dashed border-[#5C4521] text-center leading-3 text-[9px] font-serif">
+            §
+          </span>
+          <span className="uppercase tracking-wider">
+            BOT CHAIN POSTAL SERVICE • PROTOCOL NO. 07
+          </span>
+        </div>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <span className="inline-flex items-center gap-2">
-              <span
-                aria-hidden="true"
-                className="inline-block w-2 h-2 flex-shrink-0"
-                style={{ background: "var(--accent)", borderRadius: "1px" }}
-              />
-              <BuiltOnBotChain
-                className="text-[11px] uppercase tracking-[0.06em]"
-                style={{ color: "var(--text-secondary)" }}
-              />
-            </span>
-
-            <a
-              href="https://botchain.ai"
-              target="_blank"
-              rel="noreferrer"
-              className="text-[11px] underline"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              botchain.ai
-            </a>
-
-            <a
-              href="https://scan.botchain.ai"
-              target="_blank"
-              rel="noreferrer"
-              className="text-[11px] underline"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              BOT Chain Explorer
-            </a>
-          </div>
+        <div className="flex items-center gap-3">
+          <span className="text-[#5C4521]/70">DISPATCHED ON-CHAIN</span>
+          <BuiltOnBotChain />
         </div>
       </footer>
     </div>
-  );
-}
-
-/**
- * Horizontal tabs. `aria-current` rather than colour alone marks the active one, and the active
- * check is an exact match so `/` does not light up on every page.
- */
-function Nav({ items }: { items: NavItem[] }) {
-  const pathname = usePathname();
-
-  return (
-    <nav className="flex items-center gap-1 -mb-px overflow-x-auto">
-      {items.map((item) => {
-        const active = pathname === item.href;
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            aria-current={active ? "page" : undefined}
-            className="nav-link flex items-center px-3 py-2 text-[12px] uppercase tracking-[0.04em] no-underline whitespace-nowrap"
-            style={{
-              color: active ? "var(--accent)" : "var(--text-secondary)",
-              borderBottom: `1px solid ${active ? "var(--accent)" : "transparent"}`,
-            }}
-          >
-            {item.label}
-          </Link>
-        );
-      })}
-    </nav>
   );
 }
