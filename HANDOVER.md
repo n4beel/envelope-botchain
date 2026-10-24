@@ -64,7 +64,7 @@ npm test # (vitest run lib test/lint)
 
 # 4. Integration tests
 npm run test:integration # (vitest run test/integration)
-# Result: 2 passed test files, 17 passed tests (port 8607)
+# Result: 2 passed test files, 18 passed tests (port 8607)
 
 # 5. Production build
 npm run build # (next build)
@@ -72,5 +72,30 @@ npm run build # (next build)
 
 # 6. Distinctness check
 python3 scripts/check-distinct.py envelope
-# Result: 22 projects compared; 0 pair/file problem(s)
+# Result: 30 projects compared; 0 pair/file problem(s)
 ```
+
+## Feedback round 1
+
+All items from `docs/specs/FEEDBACK-envelope.md` fixed in order:
+
+- **Item 1 (Wrong envelope ID in share link):** Fixed. Replaced hard-coded topic comparison in `components/envelope/SealEnvelopeForm.tsx` with `parseEventLogs({ abi: envelopeAbi, logs: receiptLogs, eventName: "Locked" })`, extracting `args.id` directly. Removed the `?? 1n` fallback and surfaced explicit error state if the log cannot be decoded. Added an integration test in `test/integration/envelope.test.ts` sealing two sequential envelopes, verifying the second decoded ID matches `envelopeCount` and `envelopeOf(id).hash == hashOf(code)`.
+- **Item 2 (No-wallet home):** Fixed. Removed top-level `BotChainGate` wrapper in `app/page.tsx`. Gated only the `Seal & Send` button inside `SealEnvelopeForm.tsx`. Form inputs, envelope illustration, and exact limitation statement (`You can't call it back until it expires. If the code reaches the wrong person, so does the money.`) now render cleanly for walletless visitors with inputs disabled until connected.
+- **Item 3 (Local stack environment variables):** Fixed. Added `NEXT_PUBLIC_BOTCHAIN_NETWORK=testnet` and `NEXT_PUBLIC_BOHR_RPC=http://127.0.0.1:8707` to the `.env.local` block written by `scripts/local-stack.mjs`.
+- **Item 4 (Seeded chain timestamp alignment):** Fixed. Updated `scripts/local-stack.mjs` to spawn anvil with `--timestamp (realNow - 3605)` and only warp forward by 3605s, ending within ~2 minutes of current wall-clock time (asserted `<= 120s`, measured: `0s`). Formatted account role table added to script output.
+- **Item 5 (Browser walkthrough):** Executed full walkthrough on seeded local stack (`http://localhost:3007` + anvil `8707`) across all routes from §3.2 and all seeded scenarios using `mock-wallet.js`. Fixed a SSR client hydration mismatch in `SealEnvelopeForm.tsx` by generating the initial secret code on client mount. Results below:
+
+### Browser Walkthrough Results
+
+| Route | Role / Connected Address | Action / Observation | Result | Console Errors / Hydration Warnings |
+|---|---|---|---|---|
+| `/` | Walletless Visitor | Envelope illustration, disabled inputs, and limits statement render cleanly | PASS | 0 / 0 |
+| `/` | Acc 0 (`0xf39F...2266`) | Sealed new envelope #7 (0.05 BOT). Share kit generated `/e/7#<code>` (decoded ID 7, not 1) with copy and QR | PASS | 0 / 0 |
+| `/e/1` | Acc 3 (`0x90F7...b906`) | Loaded `/e/1#ENV1-5BOT-GIFT-LOCK-2026-AAAA`. Auto-read code, local hash verified, performed commit → wait 1 block → redeem | PASS | 0 / 0 |
+| `/e/2` | Visitor / Any | Redeemed envelope displays "Opened by 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC" banner | PASS | 0 / 0 |
+| `/e/3` | Acc 0 (`0xf39F...2266`) | Expired unrefunded envelope shows "Past Its Date" notice and "Take back 1.0 BOT" button for sender | PASS | 0 / 0 |
+| `/e/4` | Visitor / Any | Refunded envelope displays "Returned to Sender" banner | PASS | 0 / 0 |
+| `/e/5` | Acc 1 (`0x7099...79C8`) | Interrupted state detected: "Prior commitment found! You can proceed directly to open." | PASS | 0 / 0 |
+| `/e/6` | Visitor / Any | 140-byte note envelope renders cleanly without layout overflow | PASS | 0 / 0 |
+| `/mine` | Acc 0 (`0xf39F...2266`) | My Envelopes displays all 7 sealed envelopes partitioned with status tags and refund action for #3 | PASS | 0 / 0 |
+

@@ -9,6 +9,7 @@ import {
   http,
   keccak256,
   parseEther,
+  parseEventLogs,
   toHex,
   type Address,
   type Hex,
@@ -769,5 +770,72 @@ describe("Envelope integration tests", () => {
     });
     const redeemReceipt = await publicClient.waitForTransactionReceipt({ hash: redeemHash });
     expect(redeemReceipt.gasUsed).toBeLessThan(70_000n);
+  });
+
+  it("seals twice, decodes sequential IDs via parseEventLogs matching envelopeCount and hashOf", async () => {
+    const codeA = generateSecretCode();
+    const codeB = generateSecretCode();
+    const duration = 7200n;
+    const amountA = parseEther("0.25");
+    const amountB = parseEther("0.75");
+
+    // First seal
+    const txA = await wallets[0].writeContract({
+      address: envelopeAddress,
+      abi: envelopeAbi,
+      functionName: "lock",
+      args: [hashOf(codeA), duration, "Envelope A"],
+      value: amountA,
+      chain: local,
+      account: accounts[0],
+    });
+    const receiptA = await publicClient.waitForTransactionReceipt({ hash: txA });
+    const parsedA = parseEventLogs({
+      abi: envelopeAbi,
+      logs: receiptA.logs,
+      eventName: "Locked",
+    });
+    expect(parsedA.length).toBeGreaterThan(0);
+    const idA = parsedA[0].args.id;
+
+    // Second seal
+    const txB = await wallets[0].writeContract({
+      address: envelopeAddress,
+      abi: envelopeAbi,
+      functionName: "lock",
+      args: [hashOf(codeB), duration, "Envelope B"],
+      value: amountB,
+      chain: local,
+      account: accounts[0],
+    });
+    const receiptB = await publicClient.waitForTransactionReceipt({ hash: txB });
+    const parsedB = parseEventLogs({
+      abi: envelopeAbi,
+      logs: receiptB.logs,
+      eventName: "Locked",
+    });
+    expect(parsedB.length).toBeGreaterThan(0);
+    const idB = parsedB[0].args.id;
+
+    // Assert sequential IDs
+    expect(idB).toBe(idA + 1n);
+
+    // Assert idB equals current envelopeCount
+    const count = await publicClient.readContract({
+      address: envelopeAddress,
+      abi: envelopeAbi,
+      functionName: "envelopeCount",
+    });
+    expect(idB).toBe(count);
+
+    // Assert envelopeOf(idB).hash equals hashOf(codeB)
+    const envB = await publicClient.readContract({
+      address: envelopeAddress,
+      abi: envelopeAbi,
+      functionName: "envelopeOf",
+      args: [idB],
+    });
+    expect(envB.hash).toBe(hashOf(codeB));
+    expect(envB.amount).toBe(amountB);
   });
 });

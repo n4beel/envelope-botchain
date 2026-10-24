@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link";
 import {
   parseEther,
+  parseEventLogs,
   type Address,
   type Hex,
 } from "viem";
@@ -33,6 +34,7 @@ import {
   MIN_DURATION,
 } from "@/lib/limits";
 import Button from "@/components/ui/Button";
+import BotChainGate from "@/components/botchain/BotChainGate";
 import { useToast } from "@/components/ui/Toast";
 import EnvelopeIllustration from "./EnvelopeIllustration";
 import QRCode from "./QRCode";
@@ -66,7 +68,10 @@ export default function SealEnvelopeForm() {
   const [amount, setAmount] = useState("1");
   const [duration, setDuration] = useState<bigint>(86400n); // 1 day default
   const [note, setNote] = useState("");
-  const [secretCode, setSecretCode] = useState(() => generateSecretCode());
+  const [secretCode, setSecretCode] = useState("");
+  useEffect(() => {
+    setSecretCode(generateSecretCode());
+  }, []);
   const [useCustomCode, setUseCustomCode] = useState(false);
   const [customPassphrase, setCustomPassphrase] = useState("");
 
@@ -106,9 +111,9 @@ export default function SealEnvelopeForm() {
   }, [amount]);
 
   const isCodeValid = useMemo(() => {
-    if (!useCustomCode) return true;
+    if (!useCustomCode) return secretCode.length > 0;
     return entropy >= 40 && customPassphrase.trim().length > 0;
-  }, [useCustomCode, entropy, customPassphrase]);
+  }, [useCustomCode, secretCode, entropy, customPassphrase]);
 
   const isValid = Boolean(parsedAmount && isNoteValid && isCodeValid);
 
@@ -131,34 +136,32 @@ export default function SealEnvelopeForm() {
     if (receiptIsSuccess) {
       settledRef.current.add(txHash);
 
-      // Extract created envelope ID from Locked event
+      // Extract created envelope ID from Locked event using parseEventLogs
       let newId: bigint | null = null;
-      if (receiptLogs && publicClientRef.current) {
+      if (receiptLogs && receiptLogs.length > 0) {
         try {
-          const lockedEvent = envelopeAbi.find(
-            (item) => item.type === "event" && item.name === "Locked"
-          );
-          if (lockedEvent) {
-            for (const log of receiptLogs) {
-              if (
-                log.topics[0] ===
-                "0x5ca65bcbb4aa4d47d4e41ea5fbcc871f379435b54636f01a3eb64f772412b189" // Locked topic
-              ) {
-                // Topic 1 is indexed id
-                if (log.topics[1]) {
-                  newId = BigInt(log.topics[1]);
-                  break;
-                }
-              }
-            }
+          const parsed = parseEventLogs({
+            abi: envelopeAbi,
+            logs: receiptLogs,
+            eventName: "Locked",
+          });
+          if (parsed.length > 0 && parsed[0]?.args?.id !== undefined) {
+            newId = parsed[0].args.id;
           }
-        } catch {
-          // If log parsing fails, fall back
+        } catch (e) {
+          console.error("Failed to parse Locked event log:", e);
         }
       }
 
-      const finalId = newId ?? 1n;
-      setCreatedId(finalId);
+      if (newId === null) {
+        setStage("error");
+        setErrorMsg(
+          `Transaction confirmed (${txHash}), but could not determine envelope ID from logs. Check your transaction on the explorer.`
+        );
+        return;
+      }
+
+      setCreatedId(newId);
       setConfirmedCode(activeCode);
       setConfirmedAmount(amount);
       setStage("confirmed");
@@ -169,7 +172,7 @@ export default function SealEnvelopeForm() {
         const raw = localStorage.getItem(key);
         const existing: StoredEnvelope[] = raw ? JSON.parse(raw) : [];
         existing.unshift({
-          id: finalId.toString(),
+          id: newId.toString(),
           code: activeCode,
           amount,
           note: note.trim(),
@@ -395,10 +398,11 @@ export default function SealEnvelopeForm() {
                 id="amount-input"
                 type="text"
                 inputMode="decimal"
+                disabled={!isConnected}
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="1.0"
-                className="w-full bg-[#FFFDF9] border border-[#A88B55] rounded px-3 py-2 text-[18px] font-serif font-bold text-[#2A1D0E] placeholder:text-[#A88B55]/50 outline-none focus:border-[#7A1523]"
+                className="w-full bg-[#FFFDF9] border border-[#A88B55] rounded px-3 py-2 text-[18px] font-serif font-bold text-[#2A1D0E] placeholder:text-[#A88B55]/50 outline-none focus:border-[#7A1523] disabled:opacity-75 disabled:cursor-not-allowed"
               />
               <span className="absolute right-3 font-serif font-bold text-[14px] text-[#7A1523]">
                 BOT
@@ -418,9 +422,10 @@ export default function SealEnvelopeForm() {
                   <button
                     key={preset.label}
                     type="button"
+                    disabled={!isConnected}
                     onClick={() => setDuration(preset.value)}
                     className={[
-                      "py-1.5 px-1 rounded text-[11px] font-mono text-center transition-colors cursor-pointer",
+                      "py-1.5 px-1 rounded text-[11px] font-mono text-center transition-colors cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed",
                       isSelected
                         ? "bg-[#7A1523] text-[#FBF3E4] font-bold shadow-sm"
                         : "bg-[#FFFDF9] text-[#4A3A1F] border border-[#A88B55]/60 hover:bg-[#FAF5EB]",
@@ -449,10 +454,11 @@ export default function SealEnvelopeForm() {
             <textarea
               id="note-input"
               rows={2}
+              disabled={!isConnected}
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="A secret message revealed only when opened..."
-              className="w-full bg-[#FFFDF9] border border-[#A88B55] rounded px-3 py-1.5 text-[13px] font-serif text-[#2A1D0E] placeholder:text-[#A88B55]/50 outline-none focus:border-[#7A1523] resize-none"
+              className="w-full bg-[#FFFDF9] border border-[#A88B55] rounded px-3 py-1.5 text-[13px] font-serif text-[#2A1D0E] placeholder:text-[#A88B55]/50 outline-none focus:border-[#7A1523] resize-none disabled:opacity-75 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -464,8 +470,9 @@ export default function SealEnvelopeForm() {
               </span>
               <button
                 type="button"
+                disabled={!isConnected}
                 onClick={() => setUseCustomCode(!useCustomCode)}
-                className="text-[11px] text-[#7A1523] hover:underline font-mono cursor-pointer"
+                className="text-[11px] text-[#7A1523] hover:underline font-mono cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
               >
                 {useCustomCode ? "Use Generated Code" : "Custom Passphrase"}
               </button>
@@ -474,13 +481,14 @@ export default function SealEnvelopeForm() {
             {!useCustomCode ? (
               <div className="flex items-center justify-between gap-2">
                 <span className="font-mono text-[13px] sm:text-[14px] font-bold text-[#7A1523] break-all select-all">
-                  {formatCode(secretCode)}
+                  {secretCode ? formatCode(secretCode) : "••••-••••-••••-••••-••••-••"}
                 </span>
                 <button
                   type="button"
+                  disabled={!isConnected}
                   onClick={handleRegenerateCode}
                   title="Generate new random code"
-                  className="px-2 py-1 bg-[#FFFDF9] border border-[#A88B55] rounded text-[11px] font-mono text-[#4A3A1F] hover:bg-[#F6EFE0] shrink-0 cursor-pointer"
+                  className="px-2 py-1 bg-[#FFFDF9] border border-[#A88B55] rounded text-[11px] font-mono text-[#4A3A1F] hover:bg-[#F6EFE0] shrink-0 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
                 >
                   Regenerate
                 </button>
@@ -489,10 +497,11 @@ export default function SealEnvelopeForm() {
               <div className="flex flex-col gap-1">
                 <input
                   type="text"
+                  disabled={!isConnected}
                   value={customPassphrase}
                   onChange={(e) => setCustomPassphrase(e.target.value)}
                   placeholder="Enter custom secret passphrase"
-                  className="w-full bg-[#FFFDF9] border border-[#A88B55] rounded px-2.5 py-1 text-[13px] font-mono text-[#2A1D0E] outline-none focus:border-[#7A1523]"
+                  className="w-full bg-[#FFFDF9] border border-[#A88B55] rounded px-2.5 py-1 text-[13px] font-mono text-[#2A1D0E] outline-none focus:border-[#7A1523] disabled:opacity-75 disabled:cursor-not-allowed"
                 />
                 <div className="flex items-center justify-between text-[10px] font-mono">
                   <span
@@ -520,24 +529,44 @@ export default function SealEnvelopeForm() {
           )}
 
           {/* Primary Action Button */}
-          <Button
-            variant="wax"
-            size="lg"
-            disabled={!isValid || stage === "awaiting_wallet" || stage === "awaiting_receipt"}
-            loading={stage === "awaiting_wallet" || stage === "awaiting_receipt"}
-            onClick={handleSeal}
-            className="w-full mt-1"
-          >
-            {stage === "awaiting_wallet"
-              ? "Confirm in Wallet…"
-              : stage === "awaiting_receipt"
-              ? "Sealing on BOT Chain…"
-              : `Seal & Send ${amount} BOT`}
-          </Button>
+          {!isConnected ? (
+            <div className="w-full mt-1">
+              <BotChainGate noWalletNote="Viewing or opening an envelope by link works from any web browser without a wallet. Connect to seal funds.">
+                <Button
+                  variant="wax"
+                  size="lg"
+                  disabled
+                  className="w-full"
+                >
+                  Seal & Send
+                </Button>
+              </BotChainGate>
+            </div>
+          ) : (
+            <Button
+              variant="wax"
+              size="lg"
+              disabled={!isValid || stage === "awaiting_wallet" || stage === "awaiting_receipt"}
+              loading={stage === "awaiting_wallet" || stage === "awaiting_receipt"}
+              onClick={handleSeal}
+              className="w-full mt-1"
+            >
+              {stage === "awaiting_wallet"
+                ? "Confirm in Wallet…"
+                : stage === "awaiting_receipt"
+                ? "Sealing on BOT Chain…"
+                : `Seal & Send ${amount} BOT`}
+            </Button>
+          )}
 
-          <p className="text-[11px] text-[#5C4521] text-center leading-tight">
-            Put BOT in an envelope. Whoever has the code can open it.
-          </p>
+          <div className="text-[11px] text-[#5C4521] text-center leading-tight space-y-1">
+            <p className="font-serif">
+              Put BOT in an envelope. Whoever has the code can open it.
+            </p>
+            <p className="font-serif italic text-[#4A3A1F]">
+              You can&apos;t call it back until it expires. If the code reaches the wrong person, so does the money.
+            </p>
+          </div>
         </div>
       </EnvelopeIllustration>
     </div>

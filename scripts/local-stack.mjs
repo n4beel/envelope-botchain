@@ -14,7 +14,7 @@
  *   node scripts/local-stack.mjs
  */
 
-import { spawn } from "node:child_process";
+import { spawn, execSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import {
   createPublicClient,
@@ -41,10 +41,28 @@ const local = defineChain({
   rpcUrls: { default: { http: [RPC] } },
 });
 
-console.log(`Starting anvil on port ${PORT}...`);
+try {
+  execSync(`fuser -k ${PORT}/tcp 2>/dev/null || true`);
+} catch {}
+
+const realNow = Math.floor(Date.now() / 1000);
+const TOTAL_WARP = 3605;
+const startTimestamp = realNow - TOTAL_WARP;
+
+console.log(`Starting anvil on port ${PORT} (timestamp: ${startTimestamp})...`);
 spawn(
   "anvil",
-  ["--port", String(PORT), "--chain-id", String(CHAIN_ID), "--accounts", "10", "--silent"],
+  [
+    "--port",
+    String(PORT),
+    "--chain-id",
+    String(CHAIN_ID),
+    "--accounts",
+    "10",
+    "--timestamp",
+    String(startTimestamp),
+    "--silent",
+  ],
   {
     detached: true,
     stdio: "ignore",
@@ -249,24 +267,44 @@ const h6 = await wallets[0].writeContract({
 });
 await pub.waitForTransactionReceipt({ hash: h6 });
 
+// Assert final chain time is within 2 minutes of real time
+const finalBlock = await pub.getBlock();
+const finalTime = Number(finalBlock.timestamp);
+const nowSec = Math.floor(Date.now() / 1000);
+const diffSec = Math.abs(finalTime - nowSec);
+console.log(`Final chain timestamp: ${finalTime} (real: ${nowSec}, diff: ${diffSec}s)`);
+if (diffSec > 120) {
+  throw new Error(`Chain time ${finalTime} differs from real time by ${diffSec}s (max 120s allowed)`);
+}
+
 console.log("Writing .env.local...");
 const envContent = [
+  "# Written by scripts/local-stack.mjs for Envelope",
+  "NEXT_PUBLIC_BOTCHAIN_NETWORK=testnet",
+  `NEXT_PUBLIC_BOHR_RPC=${RPC}`,
   `NEXT_PUBLIC_CHAIN_ID=${CHAIN_ID}`,
-  `NEXT_PUBLIC_RPC_URL=${RPC}`,
+  `NEXT_PUBLIC_RPC_URL_968=${RPC}`,
   `NEXT_PUBLIC_CONTRACT_968=${envelopeAddress}`,
-  `NEXT_PUBLIC_DEPLOY_BLOCK_968=${deployBlock}`,
+  `NEXT_PUBLIC_DEPLOY_BLOCK_968=${deployBlock > 1n ? deployBlock - 1n : 1n}`,
+  "",
 ].join("\n");
-writeFileSync(".env.local", envContent + "\n");
+writeFileSync(".env.local", envContent);
 
 console.log("\n========================================================");
-console.log("✓ Envelope local stack seeded successfully.");
-console.log(`Contract: ${envelopeAddress}`);
-console.log(`Deploy block: ${deployBlock}`);
+console.log(`Envelope Local Stack Running on ${RPC}`);
+console.log("========================================================");
+console.log("Account Role Table:");
 console.log("--------------------------------------------------------");
-console.log(`Scenario 1 (Locked, 5 BOT):     /e/1#${code1}`);
-console.log(`Scenario 2 (Redeemed):          /e/2#${code2}`);
+console.log(`Acc 0: ${accounts[0].address} (Sender of all 6 envelopes; refunded #4)`);
+console.log(`Acc 1: ${accounts[1].address} (Committed to #5 - interrupted claimer)`);
+console.log(`Acc 2: ${accounts[2].address} (Redeemed envelope #2)`);
+console.log(`Acc 3..9: Available test claimers / recipients`);
+console.log("--------------------------------------------------------");
+console.log(`Scenario 1 (Locked, 5 BOT):      /e/1#${code1}`);
+console.log(`Scenario 2 (Redeemed):           /e/2#${code2}`);
 console.log(`Scenario 3 (Expired, unrefunded):/e/3#${code3}`);
-console.log(`Scenario 4 (Refunded):          /e/4#${code4}`);
+console.log(`Scenario 4 (Refunded):           /e/4#${code4}`);
 console.log(`Scenario 5 (Interrupted commit): /e/5#${code5}`);
-console.log(`Scenario 6 (140-byte note):     /e/6#${code6}`);
+console.log(`Scenario 6 (140-byte note):      /e/6#${code6}`);
 console.log("========================================================\n");
+
