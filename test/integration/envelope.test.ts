@@ -66,6 +66,14 @@ function revertDetails(err: unknown): { errorName?: string; args?: readonly unkn
   return found?.data;
 }
 
+async function mineBlock() {
+  await (publicClient.request as any)({ method: "evm_mine" });
+}
+
+async function increaseTime(seconds: number) {
+  await (publicClient.request as any)({ method: "evm_increaseTime", params: [seconds] });
+}
+
 beforeAll(async () => {
   node = spawn("anvil", ["--port", String(PORT), "--chain-id", String(CHAIN_ID), "--silent"], {
     stdio: ["ignore", "ignore", "inherit"],
@@ -186,7 +194,7 @@ describe("Envelope integration tests", () => {
     }
 
     // 4. Mine 1 block
-    await publicClient.request({ method: "evm_mine" as any, params: [] });
+    await mineBlock();
 
     // 5. Redeem from Account 1
     const balBefore = await publicClient.getBalance({ address: accounts[1].address });
@@ -252,7 +260,7 @@ describe("Envelope integration tests", () => {
       account: accounts[1],
     });
     await publicClient.waitForTransactionReceipt({ hash: commitHash });
-    await publicClient.request({ method: "evm_mine" as any, params: [] });
+    await mineBlock();
 
     // Attacker (Account 2) attempts to redeem using Account 1's secretBytes without prior commit
     try {
@@ -306,7 +314,7 @@ describe("Envelope integration tests", () => {
       account: accounts[1],
     });
     await publicClient.waitForTransactionReceipt({ hash: cTx });
-    await publicClient.request({ method: "evm_mine" as any, params: [] });
+    await mineBlock();
 
     // Victim redeems
     const rTx = await wallets[1].writeContract({
@@ -372,7 +380,7 @@ describe("Envelope integration tests", () => {
       account: accounts[1],
     });
     await publicClient.waitForTransactionReceipt({ hash: cHash });
-    await publicClient.request({ method: "evm_mine" as any, params: [] });
+    await mineBlock();
 
     // Attempt redeem with codeB: commitment matches caller, but secret does not match envelope
     try {
@@ -424,7 +432,7 @@ describe("Envelope integration tests", () => {
       account: accounts[1],
     });
     await publicClient.waitForTransactionReceipt({ hash: cHash });
-    await publicClient.request({ method: "evm_mine" as any, params: [] });
+    await mineBlock();
 
     // Account 1 attempts redeem
     try {
@@ -497,8 +505,8 @@ describe("Envelope integration tests", () => {
     }
 
     // 3. Fast-forward past expiry (3605 seconds)
-    await publicClient.request({ method: "evm_increaseTime" as any, params: [3605] });
-    await publicClient.request({ method: "evm_mine" as any, params: [] });
+    await increaseTime(3605);
+    await mineBlock();
 
     // 4. Commit after expiry reverts Expired
     try {
@@ -597,7 +605,7 @@ describe("Envelope integration tests", () => {
       account: accounts[3],
     });
     await publicClient.waitForTransactionReceipt({ hash: cHash });
-    await publicClient.request({ method: "evm_mine" as any, params: [] });
+    await mineBlock();
 
     // Redeem using userTyped code
     const rHash = await wallets[3].writeContract({
@@ -748,7 +756,7 @@ describe("Envelope integration tests", () => {
     expect(commitReceipt.gasUsed).toBeLessThan(80_000n);
 
     // Mine 1 block
-    await publicClient.request({ method: "evm_mine" as any, params: [] });
+    await mineBlock();
 
     // Redeem gas
     const redeemHash = await wallets[4].writeContract({
