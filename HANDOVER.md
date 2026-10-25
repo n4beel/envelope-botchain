@@ -99,3 +99,18 @@ All items from `docs/specs/FEEDBACK-envelope.md` fixed in order:
 | `/e/6` | Visitor / Any | 140-byte note envelope renders cleanly without layout overflow | PASS | 0 / 0 |
 | `/mine` | Acc 0 (`0xf39F...2266`) | My Envelopes displays all 7 sealed envelopes partitioned with status tags and refund action for #3 | PASS | 0 / 0 |
 
+## Feedback round 2
+
+- **Item 1 (Local-stack autonomous mining):** Added `"--block-time", "1"` to Anvil startup args in `scripts/local-stack.mjs`. Seeding continues to complete cleanly with the final timestamp difference within ~2 minutes of real time (`diff: 0s`).
+  - Command run to confirm blocks advance on their own:
+    ```bash
+    b1=$(cast block-number --rpc-url http://127.0.0.1:8707); sleep 3; b2=$(cast block-number --rpc-url http://127.0.0.1:8707); echo "$b1 -> $b2"
+    ```
+    Output: `60 -> 63` (+3 blocks produced automatically in 3 seconds).
+  - End-to-end autonomous test: On a fresh seeded local stack, sealed envelope #7 (0.25 BOT) from Account 0 (`0xf39F...2266`), committed from Account 2 (`0x3C44...93BC`) at block 84, observed block height advance autonomously to 87 without manual mining, and redeemed at block 88. Verified state transitioned to 1 (`Redeemed`) and Account 2 received funds with zero manual mining.
+- **Item 3 (Housekeeping):**
+  - Removed 0-byte `public/favicon.ico` via `git rm`.
+  - Added dedicated 192x192 PNG `app/icon.png` in project brand styling.
+  - Configured `icons: { icon: "/icon.png" }` in `metadata` in `app/layout.tsx` so browsers request `/icon.png` directly and never request `/favicon.ico`.
+
+
