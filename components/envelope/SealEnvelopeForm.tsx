@@ -350,7 +350,7 @@ export default function SealEnvelopeForm() {
             <span className="text-[11px] font-mono uppercase tracking-widest text-[#5C4521]">
               Scan to Open
             </span>
-            <QRCode value={shareUrl} size={150} />
+            <QRCode value={shareUrl} size={200} />
           </div>
 
           {/* Safety Disclaimer */}

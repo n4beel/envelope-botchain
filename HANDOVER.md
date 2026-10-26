@@ -130,3 +130,21 @@ All items from `docs/specs/FEEDBACK-envelope.md` fixed in order:
   - `/` (Home): Verified all three links present (`https://scan.bohr.life/address/0x5fbdb2315678afecb367f032d93f642f64180aa3`, `https://botchain.ai`, `https://scan.botchain.ai`).
   - `/e/1` (Detail): Verified all three links present.
   - `/nonexistent` (Not Found): Verified all three links present.
+
+## Feedback round 4
+
+- **Item 1 (Shared CSS Tokens & Contrast):**
+  - Defined missing token `--text-secondary: #4A3A1F` in `app/globals.css`. Provides 9.5:1 contrast against elevated paper ground (`#FAF5EB`), exceeding WCAG AAA (≥ 7:1) and AA requirements.
+  - Added unit test `test/lint/tokens.test.ts` scanning `app/` and `components/` for undefined CSS variables without fallback.
+  - Verified `python3 scripts/check-tokens.py envelope` exits 0 with zero undefined tokens.
+
+- **Item 3 (Real Optical QR Code):**
+  - Replaced deterministic mock QR with standards-compliant encoder `qrcode-generator` (v1.4.4 pinned).
+  - Configured error correction level **M**, **4-module quiet zone**, `#000` modules on `#FFF` background, and minimum 200px sizing.
+  - Added optical decode unit test `lib/__tests__/qrcode.test.ts` using `jsqr` (v1.4.0), rasterising an SVG data URL to RGBA bitmap and asserting `jsQR` decodes the exact envelope claim link (`https://envelope.botchain-apps.dev/e/7#ENV7-TEST-CODE-2026-AAAA`).
+
+- **Item 5 (Form Background & Wax Seal Simplification):**
+  - Redesigned `components/envelope/EnvelopeIllustration.tsx` to provide a solid, uncluttered paper surface (`#FAF5EB`) behind inputs and form text.
+  - Eliminated diagonal flap clip paths and lines from behind inputs/buttons.
+  - Relocated the wax seal stamp into the top postal identity strip beside the envelope amount / seal status, guaranteeing zero visual overlap with headings, note inputs, or claim buttons at both 360px mobile and 1280px desktop viewports.
+
