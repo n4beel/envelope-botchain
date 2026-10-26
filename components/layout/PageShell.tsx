@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import ConnectButton from "@/components/ui/ConnectButton";
 import NetworkBadge from "@/components/botchain/NetworkBadge";
 import BuiltOnBotChain from "@/components/botchain/BuiltOnBotChain";
+import { footerLinks } from "@/lib/botchain/chain";
 import { app } from "@/lib/app-config";
 
 export interface PageShellProps {
@@ -27,6 +28,7 @@ export interface PageShellProps {
 export default function PageShell({ children, title, description }: PageShellProps) {
   const pathname = usePathname();
   const isMine = pathname === "/mine";
+  const { site, explorer } = footerLinks();
 
   return (
     <div className="min-h-[100dvh] flex flex-col justify-between overflow-x-hidden relative text-[#2A1D0E]">
@@ -105,9 +107,26 @@ export default function PageShell({ children, title, description }: PageShellPro
           </span>
         </div>
 
-        <div className="flex items-center gap-3">
-          <span className="text-[#5C4521]/70">DISPATCHED ON-CHAIN</span>
-          <BuiltOnBotChain />
+        <div className="flex flex-wrap items-center justify-center gap-3 text-[11px]">
+          <BuiltOnBotChain className="hover:underline" />
+          <span className="text-[#A88B55]" aria-hidden="true">•</span>
+          <a
+            href={site}
+            target="_blank"
+            rel="noreferrer"
+            className="hover:underline hover:text-[#2A1D0E]"
+          >
+            botchain.ai
+          </a>
+          <span className="text-[#A88B55]" aria-hidden="true">•</span>
+          <a
+            href={explorer}
+            target="_blank"
+            rel="noreferrer"
+            className="hover:underline hover:text-[#2A1D0E]"
+          >
+            Explorer
+          </a>
         </div>
       </footer>
     </div>

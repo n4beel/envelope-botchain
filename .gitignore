@@ -15,3 +15,5 @@ contracts/broadcast/
 
 .DS_Store
 *.log
+.netlify/
+AGENTS.md

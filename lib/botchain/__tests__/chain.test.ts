@@ -7,7 +7,11 @@ import {
   faucetUrl,
   isBotChainId,
   txUrl,
+  BOTCHAIN_SITE_URL,
+  BOTCHAIN_EXPLORER_URL,
+  footerLinks,
 } from "../chain";
+import { DEPLOYMENTS, ZERO_ADDRESS } from "../deployment";
 
 describe("chain identity", () => {
   // These two numbers are the whole premise. Both were confirmed against the live RPCs on
@@ -56,3 +60,65 @@ describe("faucet", () => {
     expect(faucetUrl(677)).toBeNull();
   });
 });
+
+describe("footerLinks", () => {
+  it("provides fixed site and explorer constants", () => {
+    expect(BOTCHAIN_SITE_URL).toBe("https://botchain.ai");
+    expect(BOTCHAIN_EXPLORER_URL).toBe("https://scan.botchain.ai");
+  });
+
+  it("handles chain 677 deployed and undeployed", () => {
+    const saved = { ...DEPLOYMENTS[677] };
+    try {
+      DEPLOYMENTS[677] = {
+        address: "0x1111111111111111111111111111111111111111",
+        deployBlock: 100n,
+      };
+      const deployed = footerLinks(677);
+      expect(deployed.site).toBe("https://botchain.ai");
+      expect(deployed.explorer).toBe("https://scan.botchain.ai");
+      expect(deployed.contract).toBe(
+        "https://scan.botchain.ai/address/0x1111111111111111111111111111111111111111",
+      );
+
+      DEPLOYMENTS[677] = {
+        address: ZERO_ADDRESS,
+        deployBlock: 0n,
+      };
+      const undeployed = footerLinks(677);
+      expect(undeployed.site).toBe("https://botchain.ai");
+      expect(undeployed.explorer).toBe("https://scan.botchain.ai");
+      expect(undeployed.contract).toBeNull();
+    } finally {
+      DEPLOYMENTS[677] = saved;
+    }
+  });
+
+  it("handles chain 968 deployed and undeployed", () => {
+    const saved = { ...DEPLOYMENTS[968] };
+    try {
+      DEPLOYMENTS[968] = {
+        address: "0x2222222222222222222222222222222222222222",
+        deployBlock: 200n,
+      };
+      const deployed = footerLinks(968);
+      expect(deployed.site).toBe("https://botchain.ai");
+      expect(deployed.explorer).toBe("https://scan.botchain.ai");
+      expect(deployed.contract).toBe(
+        "https://scan.bohr.life/address/0x2222222222222222222222222222222222222222",
+      );
+
+      DEPLOYMENTS[968] = {
+        address: ZERO_ADDRESS,
+        deployBlock: 0n,
+      };
+      const undeployed = footerLinks(968);
+      expect(undeployed.site).toBe("https://botchain.ai");
+      expect(undeployed.explorer).toBe("https://scan.botchain.ai");
+      expect(undeployed.contract).toBeNull();
+    } finally {
+      DEPLOYMENTS[968] = saved;
+    }
+  });
+});
+
